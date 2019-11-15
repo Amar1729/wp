@@ -1,7 +1,143 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # wp: a wrapper script mostly for pywal and fetch oneliners
 # Note - most wallpaper-changing functions are mac-specific (for nowf)
+
+# Things to customize:
+# _space_id:    change command to get current space
+# new_terminal: change command to spawn new terminal
+
+if [[ -n "$XDG_CACHE_HOME" ]]; then
+    # default: $HOME/.cache
+    ROOT="$XDG_CACHE_HOME/wal"
+else
+    ROOT="$HOME/.cache/wal"
+fi
+
+declare -a FILES=(wp sequences colors.sh colors.css colors.json)
+
+_space_id () {
+    # Get ID of current space
+
+    # not impl. for linux yet
+    if [[ "Darwin" != "$(uname -s)" ]]; then echo 1; fi
+
+    # (macOS)
+    # prefer newer wm
+    # TODO - implement functionality for yabai
+    if /usr/local/bin/chunkc tiling::query --desktop id 2>/dev/null; then
+        if /usr/local/bin/kwmc query space active id 2>/dev/null; then
+            echo 1
+        fi
+    fi
+}
+
+_run_wal () {
+    # run pywal given input wallpaper.
+    #   copy input to cache directory.
+
+    if [[ ! -f "$1" ]]; then exit 1; fi
+
+    # -s skip changing colors
+    # -n skip reloading wallpaper
+    # -i input file
+    wal -sn -i "$1"
+
+    cp "$1" "${ROOT}/wp"
+}
+
+_fname_from_space () {
+    # $1=space id, $2=filename
+    # generate a <space> filename
+    # e.g. wp -> wp_1, colors.sh -> colors_1.sh
+
+    SPACE=$1
+    base=${2%.*} # colors.json -> colors
+    ext=${2##*.} # colors.json -> json
+    if [[ ${base} == "${ext}" ]]; then # ext is [wp|sequences] (ie no extension)
+        echo "${base}_${SPACE}"
+    else
+        echo "${base}_${SPACE}.${ext}"
+    fi
+}
+
+_cache () {
+    # given space ID, cache specific files to ROOT
+    # (files to cache found in global array $FILES)
+
+    for f in "${FILES[@]}"; do
+        f_fname="${ROOT}/$f"
+        t_fname="${ROOT}/$(_fname_from_space "$1" "$f")"
+        cp "$f_fname" "$t_fname"
+    done
+}
+
+_copy () {
+    # given $1=source ID and $2=target ID,
+    # copy space files from 1 -> 2
+    # (files to cache found in global array $FILES)
+
+    for f in "${FILES[@]}"; do
+        f_fname="${ROOT}/$(_fname_from_space "$1" "$f")"
+        t_fname="${ROOT}/$(_fname_from_space "$2" "$f")"
+        [[ -f "$f_fname" ]] && cp "$f_fname" "$t_fname"
+    done
+}
+
+get_wallpaper () {
+    # show the current wallpaper file (in cache)
+
+    SPACE=$(_space_id)
+    FILE="${ROOT}/wp_$SPACE"
+    if [[ -e $FILE ]]; then
+        echo "$FILE"
+    else
+        echo ""
+    fi
+}
+
+# TODO - add a check for sequences files that apply to destroyed desktops?
+change_wallpaper () {
+    # given $1=wallpaper:
+    # - run pywal
+    # - copy files into cache
+    # - change the wallpaper
+
+    FILE="$(realpath "$1")"
+    if [[ ! -f "$1" ]]; then exit 1; fi
+
+    SPACE=$(_space_id)
+    (_run_wal "$FILE" && _cache "$SPACE" "$FILE") >/dev/null 2>&1 &
+    osascript -e "tell application \"Finder\" to set desktop picture to POSIX file \"$FILE\""
+}
+
+_new_terminal () {
+    osascript -e "tell application \"iTerm\" to create window with default profile"
+}
+
+_reload () {
+    # show the file we need to read, given $1=space id
+
+    SPACE=$(_space_id)
+    FILE="${ROOT}/sequences_$SPACE"
+
+    if [[ -f "${ROOT}/sequences_1" ]]
+    then
+        DEFAULT="${ROOT}/sequences_1"
+    else
+        DEFAULT="${ROOT}/sequences"
+    fi
+
+    local RES=$FILE
+    [[ ! -f $FILE ]] && RES=$DEFAULT
+    echo "$RES"
+}
+
+_clean () {
+    rm -f "${ROOT}/wp_*"
+    rm -f "${ROOT}/sequences*"
+    rm -f "${ROOT}/colors_*"
+}
 
 _usage() {
     printf "wp: Tool for on-the-fly colorscheme changes.\n"
@@ -18,18 +154,19 @@ _usage() {
     printf "\n"
     printf "\twp -t|--transparency REAL\tSet transparency of terminal (0.0 to 1.0)\n"
     printf "\twp --tg|--transparency-get\tGet the current terminal's transparency (0.0 to 1.0)\n"
-    printf "\twp --pixelate\t\t\tSet background of term to pixelated version of current wallpaper\n"
-    printf "\t\t\t\t\t\t- requires iTerm2 on mac\n"
-    printf "\t\t\t\t\t\t- requires ffmpeg with frei0r\n"
+    printf "\twp --get-wallpaper\t\tGet current wallpaper file\n"
+    # printf "\twp --pixelate\t\t\tSet background of term to pixelated version of current wallpaper\n"
+    # printf "\t\t\t\t\t\t- requires iTerm2 on mac\n"
+    # printf "\t\t\t\t\t\t- requires ffmpeg with frei0r\n"
     # todo complete day/night/toggle
 }
 
 case "$1" in
     --clean)
-        ~/.bin/unique_space.sh --clean
+        _clean
         ;;
     -w|--wallpaper)
-        ~/.bin/unique_space.sh -w "$2"
+        change_wallpaper "$2"
         ;;
     -wo|--wallpaper-only)
         if [[ -z "$2" ]]; then echo "Required: wallpaper" && exit 1; fi
@@ -38,27 +175,33 @@ case "$1" in
         osascript -e "tell application \"Finder\" to set desktop picture to POSIX file \"$FILE\""
         ;;
     -n|--new)
-        ~/.bin/unique_space.sh -n
+        _new_terminal
         ;;
     -c|--copy)
-        ~/.bin/unique_space.sh --copy "$2" "$3"
+        [[ -z $2 || -z $3 ]] && echo 'Two arguments required.' && exit 1
+        _copy "$2" "$3"
         ;;
     -r|--reload)
-        cat "$(~/.bin/unique_space.sh -r)"
+        cat "$(_reload)"
         printf "\033]Plecdbb2\033\\"
         ;;
     -b|--both)
-        $0 -w "$2"
+        $0 --wallpaper "$2"
         sleep 1
-        $0 -r
+        $0 --reload
         ;;
     -f|--file)
-        cat ~/.cache/wal/sequences_"$2"
+        # if that file doesnt exist, just err back to caller
+        cat "${ROOT}/sequences_$2"
         printf "\033]Plecdbb2\033\\"
         ;;
-    --pixelate)
-        ~/.bin/pxl-bg "$(~/.bin/unique_space.sh --get-wallpaper)"
+    --get-wallpaper)
+        get_wallpaper
         ;;
+    # --pixelate)
+    #     # TODO - should i include this script in wp?
+    #     ~/.bin/pxl-bg "$(~/.bin/unique_space.sh --get-wallpaper)"
+    #     ;;
     -t|--transparency)
         osascript -e "tell application \"iTerm\" to tell current window to tell current session to set transparency to $2"
         ;;
@@ -95,12 +238,13 @@ case "$1" in
             night
         fi
         ;;
-    --bonsai)
-        ~/.bin/bonsai.sh
-        ;;
-    --coffee)
-        ~/.bin/coffee.sh
-        ;;
+    # TODO - should i include these in wp?
+    # --bonsai)
+    #     ~/.bin/bonsai.sh
+    #     ;;
+    # --coffee)
+    #     ~/.bin/coffee.sh
+    #     ;;
     --termcolors)
         # Display terminal ANSI colors
         # Print numbers
