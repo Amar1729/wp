@@ -1,15 +1,16 @@
 #!/bin/bash
 
 # Things to customize:
-# _space_id:	change command to get current space
-# new_terminal:	change command to spawn new terminal
+# _space_id:    change command to get current space
+# new_terminal: change command to spawn new terminal
 
 ROOT="$HOME/.cache/wal"
 declare -a FILES=(wp sequences colors.sh colors.css colors.json)
 
 _space_id () {
     # (macOS)
-	# prefer newer wm
+    # prefer newer wm
+    # TODO - implement functionality for yabai
     if /usr/local/bin/chunkc tiling::query --desktop id 2>/dev/null; then
         if /usr/local/bin/kwmc query space active id 2>/dev/null; then
             echo 1
@@ -18,9 +19,9 @@ _space_id () {
 }
 
 _run_wal () {
-	if [[ ! -f "$1" ]]; then exit 1; fi
+    if [[ ! -f "$1" ]]; then exit 1; fi
 
-	wal -sn -i "$1"
+    wal -sn -i "$1"
 
     cp "$1" ~/.cache/wal/wp
 }
@@ -31,7 +32,7 @@ fname_from_space () {
     SPACE=$1
     base=${2%.*} # colors.json -> colors
     ext=${2##*.} # colors.json -> json
-    if [[ ${base} == ${ext} ]]; then # ext is [wp|sequences] (ie no extension)
+    if [[ ${base} == "${ext}" ]]; then # ext is [wp|sequences] (ie no extension)
         echo "${base}_${SPACE}"
     else
         echo "${base}_${SPACE}.${ext}"
@@ -40,18 +41,18 @@ fname_from_space () {
 
 _cache () {
     # files to cache found in global array FILES
-    for f in ${FILES[@]}; do
+    for f in "${FILES[@]}"; do
         f_fname="${ROOT}/$f"
-        t_fname="${ROOT}/$(fname_from_space $1 $f)"
+        t_fname="${ROOT}/$(fname_from_space "$1" "$f")"
         cp "$f_fname" "$t_fname"
     done
 }
 
 copy () {
     # files to copy found in global array FILES
-    for f in ${FILES[@]}; do
-        f_fname="${ROOT}/$(fname_from_space $1 $f)"
-        t_fname="${ROOT}/$(fname_from_space $2 $f)"
+    for f in "${FILES[@]}"; do
+        f_fname="${ROOT}/$(fname_from_space "$1" "$f")"
+        t_fname="${ROOT}/$(fname_from_space "$2" "$f")"
         [[ -f "$f_fname" ]] && cp "$f_fname" "$t_fname"
     done
 }
@@ -60,7 +61,7 @@ get_wallpaper () {
     SPACE=$(_space_id)
     FILE=~/.cache/wal/wp_$SPACE
     if [[ -e $FILE ]]; then
-        echo $FILE
+        echo "$FILE"
     else
         echo ""
     fi
@@ -68,31 +69,31 @@ get_wallpaper () {
 
 # TODO - add a check for sequences files that apply to destroyed desktops?
 change_wallpaper () {
-	FILE="$(realpath "$1")"
-	if [[ ! -f "$1" ]]; then exit 1; fi
+    FILE="$(realpath "$1")"
+    if [[ ! -f "$1" ]]; then exit 1; fi
 
     SPACE=$(_space_id)
-	(_run_wal "$FILE" && _cache $SPACE $FILE) >/dev/null 2>&1 &
-	osascript -e "tell application \"Finder\" to set desktop picture to POSIX file \"$FILE\""
+    (_run_wal "$FILE" && _cache "$SPACE" "$FILE") >/dev/null 2>&1 &
+    osascript -e "tell application \"Finder\" to set desktop picture to POSIX file \"$FILE\""
 }
 
 new_terminal () {
-	osascript -e "tell application \"iTerm\" to create window with default profile"
+    osascript -e "tell application \"iTerm\" to create window with default profile"
 }
 
 reload_colors () {
-	SPACE=$(_space_id)
-	FILE=~/.cache/wal/sequences_"$SPACE"
+    SPACE=$(_space_id)
+    FILE=~/.cache/wal/sequences_"$SPACE"
 
-	if [[ -f ~/.cache/wal/sequences_1 ]]
-	then
-		DEFAULT=~/.cache/wal/sequences_1
-	else
-		DEFAULT=~/.cache/wal/sequences
-	fi
+    if [[ -f ~/.cache/wal/sequences_1 ]]
+    then
+        DEFAULT=~/.cache/wal/sequences_1
+    else
+        DEFAULT=~/.cache/wal/sequences
+    fi
 
     local RES=$FILE
-	[[ ! -f $FILE ]] && RES=$DEFAULT
+    [[ ! -f $FILE ]] && RES=$DEFAULT
     echo $RES
 }
 
@@ -114,7 +115,7 @@ case "$1" in
         ;;
     --copy)
         [[ -z $2 || -z $3 ]] && echo 'Two arguments required.' && exit 1
-        copy $2 $3
+        copy "$2" "$3"
         ;;
     -n|--new)
         new_terminal
