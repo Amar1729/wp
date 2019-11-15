@@ -98,17 +98,36 @@ get_wallpaper () {
 
 # TODO - add a check for sequences files that apply to destroyed desktops?
 change_wallpaper () {
-    # given $1=wallpaper:
+    # optional flag: --dry
+    #   -> only set wallpaper (must be first arg)
+    # optional arg: $1=monitor id
+    # last arg: $1|$2=wallpaper file
     # - run pywal
     # - copy files into cache
     # - change the wallpaper
 
-    FILE="$(realpath "$1")"
-    if [[ ! -f "$1" ]]; then exit 1; fi
+    local monitor file dry
 
-    SPACE=$(_space_id)
-    (_run_wal "$FILE" && _cache "$SPACE" "$FILE") >/dev/null 2>&1 &
-    osascript -e "tell application \"Finder\" to set desktop picture to POSIX file \"$FILE\""
+    dry=0
+    if [[ "$1" == "--dry" ]]; then
+        dry=1
+        shift
+    fi
+
+    if [[ -n "$2" ]]; then
+        monitor="$1"
+        file="$(realpath "$2")"
+    else
+        monitor=1
+        file="$(realpath "$1")"
+    fi
+
+    if [[ ! -f "$file" ]]; then exit 1; fi
+
+    if [[ $dry -eq 0 ]]; then
+        (_run_wal "$file" && _cache "$(_space_id)" "$file") >/dev/null 2>&1 &
+    fi
+    osascript -e "tell application \"System Events\" to tell desktop $monitor to set picture to \"$file\""
 }
 
 _new_terminal () {
@@ -116,7 +135,8 @@ _new_terminal () {
 }
 
 _reload () {
-    # show the file we need to read, given $1=space id
+    # given $1=space id
+    # reload colors by 'cat'ing appropriate file
 
     SPACE=$(_space_id)
     FILE="${ROOT}/sequences_$SPACE"
@@ -128,8 +148,11 @@ _reload () {
         DEFAULT="${ROOT}/sequences"
     fi
 
-    local RES=$FILE
-    [[ ! -f $FILE ]] && RES=$DEFAULT
+    local RES
+    if [[ -f $FILE ]];
+        then RES=$FILE;
+        else RES=$DEFAULT
+    fi
     echo "$RES"
 }
 
@@ -166,13 +189,12 @@ case "$1" in
         _clean
         ;;
     -w|--wallpaper)
-        change_wallpaper "$2"
+        shift
+        change_wallpaper "$@"
         ;;
     -wo|--wallpaper-only)
-        if [[ -z "$2" ]]; then echo "Required: wallpaper" && exit 1; fi
-        FILE="$(realpath "$2")"
-        if [[ ! -f "$FILE" ]]; then exit 1; fi
-        osascript -e "tell application \"Finder\" to set desktop picture to POSIX file \"$FILE\""
+        shift
+        change_wallpaper --dry "$@"
         ;;
     -n|--new)
         _new_terminal
