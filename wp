@@ -182,8 +182,7 @@ case "$1" in
         _copy "$2" "$3"
         ;;
     -r|--reload)
-        cat "$(_reload)"
-        printf "\033]Plecdbb2\033\\"
+        cat "$(_reload)" && $0 --cursor
         ;;
     -b|--both)
         $0 --wallpaper "$2"
@@ -192,7 +191,11 @@ case "$1" in
         ;;
     -f|--file)
         # if that file doesnt exist, just err back to caller
-        cat "${ROOT}/sequences_$2"
+        cat "${ROOT}/sequences_$2" && $0 --cursor
+        ;;
+    --cursor)
+        # ensure the cursor is readable, make it ecdbb2
+        # (does this only work in iterm2?)
         printf "\033]Plecdbb2\033\\"
         ;;
     --get-wallpaper)
