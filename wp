@@ -288,7 +288,7 @@ case "$1" in
         _usage
         ;;
     *)
-        echo "Not supported: $1"
+        [[ -n "$1" ]] && echo "Not supported: $1"
         _usage
         ;;
 esac
