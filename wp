@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+VERSION="1.0"
+
 # wp: a wrapper script mostly for pywal and fetch oneliners
 # Note - most wallpaper-changing functions are mac-specific (for now)
 
@@ -164,6 +166,7 @@ _clean () {
 
 _usage() {
     printf "wp: Tool for on-the-fly colorscheme changes.\n"
+    printf "Version: %s\n" "${VERSION}"
     printf "Usage:\n"
     printf "\twp --clean \t\t\tClear out manually-cached pywal files (e.g. colors_1.sh)\n"
     printf "\twp -w|--wallpaper FILE\t\tSet wallpaper to FILE and cache colors\n"
