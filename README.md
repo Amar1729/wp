@@ -7,3 +7,11 @@ Formalized from some scripts on [my dotfiles](https://github.com/amar1729/dotfil
 - todo - port functionality - can pixelate the terminal (iterm2)
 
 This script facilitates something like an Ubersicht bar that can be different colors on different spaces, or simple terminal windows whose colors match the background.
+
+### Installation
+
+This script lives in my tap, so you can install it easily:
+
+```bash
+brew install --HEAD amar1729/formulae/wp
+```
