@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 # wp: a wrapper script mostly for pywal and fetch oneliners
-# Note - most wallpaper-changing functions are mac-specific (for nowf)
+# Note - most wallpaper-changing functions are mac-specific (for now)
 
 # Things to customize:
 # _space_id:    change command to get current space
