@@ -70,7 +70,7 @@ _cache () {
     for f in "${FILES[@]}"; do
         f_fname="${ROOT}/$f"
         t_fname="${ROOT}/$(_fname_from_space "$1" "$f")"
-        cp "$f_fname" "$t_fname"
+        [[ -e "$f_fname" ]] && cp "$f_fname" "$t_fname"
     done
 }
 
