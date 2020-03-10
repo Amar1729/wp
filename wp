@@ -262,8 +262,8 @@ _usage() {
     printf "\twp --tg|--transparency-get\tGet the current terminal's transparency (0.0 to 1.0)\n"
     printf "\twp --get-wallpaper\t\tGet current wallpaper file\n"
     printf "\twp --pixelate\t\t\tSet background of term to pixelated version of current wallpaper\n"
-    # printf "\t\t\t\t\t\t- requires iTerm2 on mac\n"
-    # printf "\t\t\t\t\t\t- requires ffmpeg with frei0r\n"
+    printf "\t\t\t\t\t\t- requires iTerm2 on mac\n"
+    printf "\t\t\t\t\t\t- requires ffmpeg with frei0r\n"
     # todo complete day/night/toggle
 }
 
