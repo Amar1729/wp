@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="1.1.1"
+VERSION="1.1.2"
 
 # wp: a wrapper script mostly for pywal and fetch oneliners
 # Note - most wallpaper-changing functions are mac-specific (for now)
