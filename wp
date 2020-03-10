@@ -40,6 +40,12 @@ _run_wal () {
 
     if [[ ! -f "$1" ]]; then exit 1; fi
 
+    if ! command -v wal > /dev/null; then
+        echo "This functionality requires 'wal' (pywal) provided by pip."
+        echo "Make sure 'wal' is installed and in your PATH."
+        exit 2
+    fi
+
     # -s skip changing colors
     # -n skip reloading wallpaper
     # -i input file
