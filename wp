@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="1.0.1"
+VERSION="1.1.1"
 
 # wp: a wrapper script mostly for pywal and fetch oneliners
 # Note - most wallpaper-changing functions are mac-specific (for now)
@@ -132,6 +132,86 @@ change_wallpaper () {
     osascript -e "tell application \"System Events\" to tell desktop $monitor to set picture to \"$file\""
 }
 
+pixelate () {
+    # Pixelate the current wallpaper, crop it to the size of the current terminal, and
+    # set the result as the current terminal's background.
+
+    if ! command -v ffmpeg > /dev/null; then
+        echo "Requires ffmpeg (with frei0r) to pixelate wallpapers."
+        exit 2
+    fi
+
+    # check that ffmpeg has required frei0r lib (for darwin; don't know what the path is for linux)
+    if [[ $(uname) == 'Darwin' ]]; then
+        if [[ ! -e /usr/local/lib/frei0r-1/pixeliz0r.dylib ]]; then
+            echo "Need the frei0r plugin for ffmpeg,"
+            echo "and the dylib needs to MANUALLY created!"
+            echo "Run:"
+            echo "  brew install ffmpeg --with-frei0r"
+            echo "  cd /usr/local/lib/frei0r-1/"
+            # for some reason, ffmpeg looks for .dylibs
+            # so you have to manually create this symlink
+            echo "  ln -s pixeliz0r.so pixeliz0r.dylib"
+            exit 2
+        fi
+    fi
+
+    local wp
+    wp="$(osascript -e 'tell app "finder" to get posix path of (get desktop picture as alias)')"
+
+    # safety check
+    [[ ! -e "$wp" ]] && echo "$wp: doesnt exist." && exit 1
+
+    local pixd crpd
+    local x y w h
+    local -a screen res dims
+
+    pixd="$(mktemp).png"
+    crpd="$(mktemp).png"
+
+    # get resolution of screen (os-specific)
+    if [[ $(uname) == 'Darwin' ]]; then
+        # edge case: user may be using RDM to manually set mac resolution
+        if [[ -x /Applications/RDM.app/Contents/MacOS/SetResX ]]; then
+            screen=($(/Applications/RDM.app/Contents/MacOS/SetResX -ld|grep -o 'resolution[^ ]*'|grep -Eo '\d+'))
+        else
+            # fall back to getting info via system_profiler
+            screen=($(system_profiler SPDisplaysDataType|grep Resolution|grep -Eo '\d+'))
+        fi
+    else
+        # untested
+        screen=($(xrandr | grep '*' | grep -Eo '\d+ x \d+'))
+        echo 'make sure this screen res is correct for linux:'
+        echo "${screen[@]}"
+        echo '(linux) exiting...'
+        exit 2
+    fi
+
+    trunc () { sed -e 's/\..*//' < /dev/stdin; }
+
+    # get resolution of picture
+    res=($(ffmpeg -i "$wp" 2>&1|grep 'Stream'|grep -Eo '\d+x\d+'|tr 'x' ' '))
+
+    # get size of window (TODO : app-specific?)
+    dims=($(osascript -e 'tell app "iTerm2" to get bounds of front window'|tr -d ','))
+
+    x=$(echo "(${dims[0]} / ${screen[0]}) * ${res[0]}" | bc -l | trunc)
+    y=$(echo "(${dims[1]} / ${screen[1]}) * ${res[1]}" | bc -l | trunc)
+
+    w=$(echo "(${dims[2]} / ${screen[0]}) * ${res[0]}" | bc -l | trunc); w=$((w-x))
+    h=$(echo "(${dims[3]} / ${screen[1]}) * ${res[1]}" | bc -l | trunc); h=$((h-y))
+
+    # pixelate, THEN crop image (can't crop first since pixelation size gets weird)
+    ffmpeg -y -i "$wp" -filter:v 'frei0r=pixeliz0r:0.02|0.02' "$pixd" >& /dev/null
+    ffmpeg -y -i "$pixd" -vf "crop=$w:$h:$x:$y" "$crpd" >& /dev/null
+
+    # set it as bg img of the terminal
+    osascript -e "tell app \"iTerm2\" to tell current session of current window to set background image to \"$crpd\""
+
+    rm -f "$pixd" "${pixd%.png}"
+    rm -f "$crpd" "${crpd%.png}"
+}
+
 _new_terminal () {
     osascript -e "tell application \"iTerm\" to create window with default profile"
 }
@@ -181,7 +261,7 @@ _usage() {
     printf "\twp -t|--transparency REAL\tSet transparency of terminal (0.0 to 1.0)\n"
     printf "\twp --tg|--transparency-get\tGet the current terminal's transparency (0.0 to 1.0)\n"
     printf "\twp --get-wallpaper\t\tGet current wallpaper file\n"
-    # printf "\twp --pixelate\t\t\tSet background of term to pixelated version of current wallpaper\n"
+    printf "\twp --pixelate\t\t\tSet background of term to pixelated version of current wallpaper\n"
     # printf "\t\t\t\t\t\t- requires iTerm2 on mac\n"
     # printf "\t\t\t\t\t\t- requires ffmpeg with frei0r\n"
     # todo complete day/night/toggle
@@ -226,10 +306,9 @@ case "$1" in
     --get-wallpaper)
         get_wallpaper
         ;;
-    # --pixelate)
-    #     # TODO - should i include this script in wp?
-    #     ~/.bin/pxl-bg "$(~/.bin/unique_space.sh --get-wallpaper)"
-    #     ;;
+    --pixelate)
+        pixelate
+        ;;
     -t|--transparency)
         osascript -e "tell application \"iTerm\" to tell current window to tell current session to set transparency to $2"
         ;;
