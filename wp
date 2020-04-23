@@ -26,10 +26,12 @@ _space_id () {
 
     # (macOS)
     # prefer newer wm
-    # TODO - implement functionality for yabai
-    if /usr/local/bin/chunkc tiling::query --desktop id 2>/dev/null; then
-        if /usr/local/bin/kwmc query space active id 2>/dev/null; then
-            echo 1
+    # yabai functionality provided without jq
+    if /usr/local/bin/yabai -m query --spaces --space | grep "index" | grep -Eo "\d+" 2>/dev/null; then
+        if /usr/local/bin/chunkc tiling::query --desktop id 2>/dev/null; then
+            if /usr/local/bin/kwmc query space active id 2>/dev/null; then
+                echo 1
+            fi
         fi
     fi
 }
