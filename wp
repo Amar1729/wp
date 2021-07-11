@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="1.1.3"
+VERSION="1.1.4"
 
 # wp: a wrapper script mostly for pywal and fetch oneliners
 # Note - most wallpaper-changing functions are mac-specific (for now)
@@ -51,9 +51,9 @@ _run_wal () {
     # -s skip changing colors
     # -n skip reloading wallpaper
     # -i input file
-    if ! wal -sn -i "$1"; then
-        echo "Running 'wal' failed. Check the output of:" >&2
-        echo "wal -sn -i $1" >&2
+    if ! ERR=$(wal -sn -i "$1"); then
+        echo "+ wal -sn -i $1" >&2
+        echo "$ERR" >&2
         exit 2
     fi
 
