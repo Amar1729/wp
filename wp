@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-VERSION="1.1.6"
+VERSION="1.2.0"
 
 # wp: a wrapper script mostly for pywal and fetch oneliners
 # Note - most wallpaper-changing functions are mac-specific (for now)
@@ -338,6 +338,7 @@ case "$1" in
 ##                                  Note - reloading too soon might not work for complex images
     -r|--reload)
         cat "$(_reload)" && $0 --cursor
+        change_alacritty
         ;;
 ## -b|--both FILE               Set wallpaper and reload colors
     -b|--both)
